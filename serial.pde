@@ -1,3 +1,5 @@
+
+// I use this code over and over for serial connections! 
 import processing.serial.*;
 import static javax.swing.JOptionPane.*;//needed by the message box for selecting port
 String SerialString = null;      // Data received from the serial port
@@ -5,29 +7,30 @@ Serial relaySerialPort;
 Serial gatewaySerialPort; 
 final boolean debug = true;
 
-//void serialEvent(Serial myPort) {
-void serialGet() {
+void serialGet() {// check for new data received here
 
   SerialString = gatewaySerialPort.readStringUntil(0x0D);
+  //samples of what is sent 
   //trigBoard Name Contact Still Open
   //trigBoard Name Contact has Closed
   //trigBoard Name Button Was Pressed
   println(SerialString);
   if (SerialString != null) {
-    if (SerialString.contains("trigBoard Name Contact Still Open") && timerState==0 && currentState==3) {//first one to catch after flash
-      println("STILL OPEN TIMER PASS");
-      //String[] splitStrings = new String[3];
-      String[] splitSerialString = split(SerialString, ',');
 
+    //first one to catch after flash
+    if (SerialString.contains("trigBoard Name Contact Still Open") && timerState==0 && currentState==3) {
+      println("STILL OPEN TIMER PASS");
+      //now to strip out voltage at the end
+      String[] splitSerialString = split(SerialString, ',');
       //need to get rid of space and V at end
       splitSerialString[1] = splitSerialString[1].substring(1);
       splitSerialString[1] = splitSerialString[1].substring(0, splitSerialString[1].length()-2);
       println(splitSerialString[1]);//should be the voltage
       float batteryVoltage = float(splitSerialString[1]);
 
-      if (batteryVoltage>2.5 && batteryVoltage<3.5) {
+      if (batteryVoltage>2.5 && batteryVoltage<3.5) {// check teh battery while we're at it - it would be really bad if 
         println("BATTERY PASS");
-        relaySerialPort.write("C");//this will trigger a has closed, but we will ignore
+        relaySerialPort.write("C");//this will trigger a has closed, but we will ignore, since we're testing timer still
         timerState=1;
         currentState++;
         timerCheckStart=millis();
@@ -36,12 +39,14 @@ void serialGet() {
         failure=true;
       }
     }
+
+    //second check on the timer to make sure contact still closed works
     if (SerialString.contains("trigBoard Name Contact Still Closed") && timerState==1 && currentState==4) {
       println(millis()-timerCheckStart);
       if (millis()-timerCheckStart>4000 && millis()-timerCheckStart<10000) {
         println("STILL CLOSED TIMER PASS");
         timerCheckStart=millis();
-        relaySerialPort.write("O");//this will trigger a has closed, but we will ignore
+        relaySerialPort.write("O");//this will OPEN up, but we will ignore for now
         timerCheckStart=millis();
         timerState=2;
         currentState++;
@@ -49,12 +54,16 @@ void serialGet() {
         failureMode = "TIMER OUT OF TOL";
         failure=true;
       }
-    }   
+    }
+
+    //third contact close check
     if (SerialString.contains("trigBoard Name Contact has Closed") && contactState==1 && currentState==6) {
       println("CONTACT CLOSE PASS");
       timerCheckStart=millis();
       contactState=2;
     }
+
+    //fourth contact open check
     if (SerialString.contains("trigBoard Name Contact has Opened") && contactState==3 && currentState==6) {
       println("CONTACT OPEN PASS");
       timerCheckStart=millis();
@@ -62,6 +71,7 @@ void serialGet() {
       currentState++;
     }
 
+    //fith button pressed check
     if (SerialString.contains("trigBoard Name Button Was Pressed") && currentState==8) {
       println("WAKE BUTTON PASS");
       timerCheckStart=millis();
@@ -95,10 +105,7 @@ String serialSelection(String nameofPort) {
         i = int(COMx.toLowerCase().charAt(0) - 'a') + 1;
       }
       return Serial.list()[i-1];
-      //trigBoardPort = ;
 
-      //myPort = new Serial(this, trigBoardPort, 19200); // change baud rate to your liking
-      //myPort.bufferUntil(0x0A); // buffer until CR/LF appears, but not required..
     } else {
       showMessageDialog(frame, "Device is not connected to the PC");
       exit();

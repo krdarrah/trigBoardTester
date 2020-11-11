@@ -9,6 +9,7 @@ void mousePressed() {
     failure=false;
   }
 
+//next button
   if (mouseOverRect(width-5-60, 65, 60, 30) && (currentState==0 ||currentState==9 || currentState==10)) {
     if (currentState==0 || currentState==9)
       currentState++;
@@ -20,10 +21,5 @@ void mousePressed() {
     if (currentState==1) {
       testStartTime = millis();
     }
-    //if(currentState==4){//enters timer check, so reset things
-    //gatewaySerialPort.clear();
-    //timerCheckStart=millis();
-    //timerState = 0;
-    //}
   }
 }

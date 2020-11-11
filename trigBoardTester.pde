@@ -1,11 +1,18 @@
+/*
+*  trigBoard Automated Test Software
+ *  KD CIRCUITS 2020
+ *  https://www.kdcircuits.com
+ *
+ *  DESIGNED TO RUN ON MAC OS
+ */
+
+
+//added these to allow the software to "see" the command line output
+// ...copied from a stack overflow post
 import java.io.*;
 import java.io.File;
-//import interfascia.*;
 
-
-
-//IFButton startOverButton, nextButton;
-//GUIController GUIcont;
+// These are the global strings to store the serial port names
 String trigBoardPort = "";
 String relayPort = "";
 String gatewayPort = "";
@@ -17,29 +24,41 @@ String espToolName = " ";
 String bootAppBinName = " ";
 String bootLoaderBinName = " ";
 
+//set in the flash commands tab and checked when returned
 boolean eraseSuccess = false;
 boolean flashSuccess = false;
-int currentState = 0;
+
+//globally set if anything goes wrong, forces the failure screen
 boolean failure = false;
+
+//holds the current state 0,1,2,3... each state is doing something in the test sequence
+int currentState = 0;
+
+//when failure is true, this is what is printed out, so is set during teh failure
 String failureMode = "";
-//IFLookAndFeel  redLook, greenLook;
-PFont iceland;
-long timerCheckStart;
+
+
+PFont iceland;// THE Google Font Iceland - my fav
+
+//timer and state related variables
 int timerState = 0;
 int contactState = 0;
+long timerCheckStart;
 long testStartTime;
 int totalTestTimeSeconds;
+
 void setup() {
+  //loading font
   iceland = createFont("Iceland-Regular.ttf", 32);
   textFont(iceland);
 
+  //draw up the screen
   size(600, 100);
-  println("setting up serial");
-
+  //first thing is launch the window to select files and get serial ports
   getFiles();
-  trigBoardPort = serialSelection("trigBoard Port");
-  relayPort = serialSelection("relay Port");
-  gatewayPort = serialSelection("gateway Port");
+  trigBoardPort = serialSelection("trigBoard Port");// the USB Serial connected to the trigBoard for programming
+  relayPort = serialSelection("relay Port");        // the USB Serial connected to the ATMEGA328 used for the relay contact to wake trigBoard
+  gatewayPort = serialSelection("gateway Port");    // the USB Serial connected to the Gateway (ESP32) used to listen for packets from trigBoard under test
   relaySerialPort = new Serial(this, relayPort, 115200);
   gatewaySerialPort = new Serial(this, gatewayPort, 115200);
 }
@@ -48,14 +67,15 @@ void setup() {
 
 
 void draw() {
-  if (!failure) {
-    if (currentState==0) {//starting point
+  if (!failure) {//only if there are no failures do we go through the sequence
+    if (currentState==0) {//starting point, waiting for you to do something
       background(255);
       fill(0);
       textSize(25);
       text("NEW BOARD-PRESS RESET AND CHECK CURRENT\nCLOSE TO 0.000?", 10, 30);
     }
-    if (currentState==1) {//flashing firmware message
+
+    if (currentState==1) {//flashing firmware
       background(255);
       fill(0);
       textSize(25);
@@ -87,6 +107,7 @@ void draw() {
         }
       }
     }
+
     if (currentState==3) {//flash was a success, waiting for reset
       background(255);
       fill(0);
@@ -99,24 +120,19 @@ void draw() {
       if (int((millis()-timerCheckStart)/1000) % 2 ==0) {
         background(0, 255, 0);
       }
-
-
-
       text("FLASH SUCCESS - PRESS RESET BUTTON " + (30-int((millis()-timerCheckStart)/1000))+"seconds", 10, 30);
       if (gatewaySerialPort.available()>0) {
         serialGet();
       }
     }
-    if (currentState==4) {// TIMER CHECKS
 
+    if (currentState==4) {// TIMER CHECKS
       fill(0);
       textSize(25);
-
       if (millis()-timerCheckStart >20000) {
         failureMode = "TIMER FAIL";
         failure=true;
       }
-
       if (millis()-timerCheckStart <2000) {//just flash this up for 2 seconds, since it checked battery voltage in order to get here
         background(0, 255, 0);
         text("BATTERY SUCCESS", 10, 30);
@@ -124,13 +140,12 @@ void draw() {
         background(255);
         text("TESTING TIMER", 10, 30);
       }
-
-
       if (gatewaySerialPort.available()>0) {
         serialGet();
       }
     }
-    if (currentState==5) {// TIMER SUCCESS
+
+    if (currentState==5) {// TIMER SUCCESS only for 2sec
       background(0, 255, 0);
       fill(0);
       textSize(25);
@@ -141,6 +156,7 @@ void draw() {
         contactState=0;
       }
     }
+
     if (currentState==6) {// contact state
       background(255);
       fill(0);
@@ -150,22 +166,21 @@ void draw() {
         failure=true;
       }
 
-      if (contactState==0) {
+      if (contactState==0) {//first close
         contactState=1;
         relaySerialPort.write("C");
       }
-      if (contactState==2 && millis()-timerCheckStart >2000) {
+      if (contactState==2 && millis()-timerCheckStart >2000) {//wait, then open
         relaySerialPort.write("O");//open back up
         contactState=3;
       }
-
-
       text("TESTING CONTACTS", 10, 30);
       if (gatewaySerialPort.available()>0) {
         serialGet();
       }
     }
-    if (currentState==7) {// CONTACT SUCCESS
+
+    if (currentState==7) {// CONTACT SUCCESS only for 2sec
       background(0, 255, 0);
       fill(0);
       textSize(25);
@@ -175,6 +190,7 @@ void draw() {
         timerCheckStart=millis();
       }
     }
+
     if (currentState==8) {// wake button
       background(255);
       fill(0);
@@ -187,10 +203,7 @@ void draw() {
         background(255, 0, 0);
         fill(255);
       }
-
       text("PRESS AND HOLD WAKE BUTTON " + (30-int((millis()-timerCheckStart)/1000))+"seconds left", 10, 30);
-
-
       if (gatewaySerialPort.available()>0) {
         serialGet();
       }
@@ -202,6 +215,7 @@ void draw() {
       textSize(25);
       text("WAKE SUCCESS - NOW SETUP CONFIGURATOR", 10, 30);
     }
+
     if (currentState==10) {// METER CHECK
       background(255);
       fill(0);
@@ -213,13 +227,12 @@ void draw() {
       background(0, 255, 0);
       fill(0);
       textSize(25);
-
       text(totalTestTimeSeconds + "seconds total - GREAT JOB! YOU EARNED $$$", 10, 30);
       if (millis()-timerCheckStart >5000) {
         currentState=0;
       }
     }
-  } else {
+  } else {//FAILURE
     background(255, 0, 0);
     fill(255);
     textSize(20);
@@ -235,7 +248,7 @@ void draw() {
   textSize(20);
   text("RESTART", 12, 85);
 
-  //only show if current state allows
+  //only show if current state allows draw a next button
   if (currentState==0 ||currentState==9 || currentState==10) {
     fill(77, 158, 106);//darkgreen
     rect(width-5-60, 65, 60, 30);//next button

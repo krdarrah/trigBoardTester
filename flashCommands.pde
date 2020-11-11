@@ -1,6 +1,6 @@
 void erase() throws IOException {
   try {
-
+    //this whole string here copied straight out of the Arduino IDE for a USB upload
     Process proc = Runtime.getRuntime().exec(espToolName + " --chip esp32 --port " + trigBoardPort + " --baud 921600 --before default_reset --after hard_reset erase_flash");
     relaySerialPort.write("O");
     BufferedReader stdInput = new BufferedReader(new 
@@ -12,13 +12,13 @@ void erase() throws IOException {
     eraseSuccess = false;
     while ((s = stdInput.readLine()) != null) {
       println(s);
-      if (s.contains("Serial port")) {
+      if (s.contains("Serial port")) {////toggle the relay to wake up trigBoard
         relaySerialPort.write("C");
         delay(500);
         relaySerialPort.write("O");
       }
 
-      if (s.equals("Hard resetting via RTS pin...")) {
+      if (s.equals("Hard resetting via RTS pin...")) {//always get this after all goes well
         eraseSuccess=true;
         println("erase complete - press the reset button");
         relaySerialPort.write("O");
